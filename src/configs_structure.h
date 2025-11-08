@@ -1,4 +1,5 @@
 // All config structures should be defined here
+#pragma once
 
 struct attr {
     char* name;
