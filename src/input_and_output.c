@@ -1,15 +1,31 @@
 #include "input_and_output.h"
 
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
-const unsigned int MAX_INDENT_SIZE = 100;
+#include "config_parsing_methods.h"
+
+//////// OUTPUT ////////
+
+const size_t MAX_INDENT_SIZE = 100;
+
 // indent_size and indent_step are calculated in number of spaces
-const unsigned int INDENT_STEP = 4;
-unsigned int indent_size = 0;
+const size_t INDENT_STEP = 4;
+size_t indent_size = 0;
+
+FILE* output_fd = NULL;
+
+void set_output_fd(FILE* fd) { output_fd = fd; }
 
 void print_with_indent(char* fmt, ...) {
+    if (output_fd == NULL) {
+        output_fd = stdout;
+    }
+
     char indent[MAX_INDENT_SIZE];
     memset(indent, '\0', MAX_INDENT_SIZE * sizeof(char));
 
@@ -18,10 +34,10 @@ void print_with_indent(char* fmt, ...) {
 
     // printing indent
     memset(indent, ' ', indent_size * sizeof(char));
-    printf("%s", indent);
+    fprintf(output_fd, "%s", indent);
 
     // printing everything passed to function
-    vprintf(fmt, list);
+    vfprintf(output_fd, fmt, list);
     va_end(list);
 }
 
@@ -84,4 +100,41 @@ void print_config(struct node* starting_node) {
     open_parentheses();
     print_node(starting_node);
     close_parentheses();
+}
+
+//////// INPUT ////////
+
+struct node* read_config_from_file(int argc, char* argv[]) {
+    if (argc == 1) {
+        errno = EINVAL;
+        fprintf(stderr, "No arguments provided\n");
+        return NULL;
+    }
+
+    FILE* read_fd = fopen(argv[1], "r");
+    if (!read_fd) {
+        fprintf(stderr, "Failed to open file: \"%s\"\n", argv[1]);
+        return NULL;
+    }
+
+    struct stat read_file_status;
+    if (fstat(fileno(read_fd), &read_file_status)) {
+        fprintf(stderr, "Failed to access file info: \"%s\"\n", argv[1]);
+        return NULL;
+    }
+
+    if (read_file_status.st_size == 0) {
+        errno = EINVAL;
+        fprintf(stderr, "File is empty: \"%s\"\n", argv[1]);
+        return NULL;
+    }
+
+    void* mapped_file = mmap(NULL, read_file_status.st_size, PROT_READ,
+                             MAP_PRIVATE, fileno(read_fd), 0);
+    if (mapped_file == MAP_FAILED) {
+        fprintf(stderr, "Failed to map file: \"%s\"\n", argv[1]);
+        return NULL;
+    }
+
+    return parse_config_from_buffer((char*)mapped_file);
 }
