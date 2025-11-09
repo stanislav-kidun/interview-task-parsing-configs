@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "config_structures.h"
+#include "utils.h"
 
 int validate_name_symbol(char symbol) {
     return (symbol >= '0' && symbol <= '9') ||
@@ -25,14 +26,14 @@ char* parse_name(char* starting_point, char* buff_end) {
 // value parsing could be done in one function, but i decided to split it in two
 // so the condition will not become really heavy and hard to read
 
-char* parse_value_with_spaces(char* starting_point, char* buff_end) {
+char* parse_value_with_spaces(char* starting_point, char* buff_end,
+                              char closing_symbol) {
     size_t value_size = 0;
     int is_protected_symbol = 0;
     for (; starting_point + value_size != buff_end &&
-           !(*(starting_point + value_size) == '\'' ||
-             *(starting_point + value_size) == '\"' && !is_protected_symbol);
+           !(*(starting_point + value_size) == closing_symbol &&
+             !is_protected_symbol);
          ++value_size) {
-
         if (*(starting_point + value_size) == '\\') {
             is_protected_symbol = 1;
         } else {
@@ -73,7 +74,11 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
     struct attr* current_attr = NULL;
     struct attr* previous_attr = NULL;
 
-    int is_opened_node = 0;
+    // stack for storing opened nodes, to manage children
+    struct SimpleStack opened_nodes_stack;
+    opened_nodes_stack.top_node = NULL;
+    struct SimpleStack opened_nodes_last_attr_stack;
+    opened_nodes_last_attr_stack.top_node = NULL;
 
     char* pointer = buff;
     while (pointer != buff_end) {
@@ -84,9 +89,23 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
                     start_node = current_node;
                     previous_node = current_node;
                 } else {
-                    // TODO: if there are opened nodes, make this one child,
-                    // else make this one next
+                    struct node* last_opened_node =
+                        (struct node*)get_top_from_stack(&opened_nodes_stack);
+                    if (last_opened_node) {
+                        if (!last_opened_node->child) {
+                            last_opened_node->child = current_node;
+                            previous_node = NULL;
+                        }
+                    }
+                    if (previous_node) {
+                        previous_node->next = current_node;
+                        previous_node = current_node;
+                    }
                 }
+                add_to_stack(&opened_nodes_stack, current_node);
+
+                add_to_stack(&opened_nodes_last_attr_stack, previous_attr);
+                previous_attr = NULL;
 
                 ++pointer;
                 current_node->name = parse_name(pointer, buff_end);
@@ -96,35 +115,41 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
                 // TODO: need to make parent node current. The easy way is to
                 // add parent field in node structure. The hard one is to
                 // create stack with nodes
+                previous_node =
+                    (struct node*)extract_top_from_stack(&opened_nodes_stack);
+                previous_attr = (struct attr*)extract_top_from_stack(
+                    &opened_nodes_last_attr_stack);
+                ++pointer;
                 break;
             case 'a':
                 // we have found attribute and start parsing it
+                struct node* last_opened_node =
+                    (struct node*)get_top_from_stack(&opened_nodes_stack);
                 current_attr = (struct attr*)calloc(1, sizeof(struct attr));
 
-                if (!current_node->attr) {
-                    current_node->attr = current_attr;
+                if (previous_attr) {
+                    previous_attr->next = current_attr;
                     previous_attr = current_attr;
                 } else {
-                    previous_attr->next = current_attr;
+                    last_opened_node->attr = current_attr;
                     previous_attr = current_attr;
                 }
                 current_attr->name = parse_name(pointer, buff_end);
                 pointer += strlen(current_attr->name);
 
-                // its possible for attributes to have no value, so we need to
-                // check if there '=' symbol
-                if (*pointer == '=') {
+                break;
+            case '=':
+                ++pointer;
+                for (; *pointer == ' '; ++pointer);
+                if ((*pointer == '\'') || (*pointer == '\"')) {
                     ++pointer;
-                    if ((*pointer == '\'') || (*pointer == '\"')) {
-                        ++pointer;
-                        current_attr->value =
-                            parse_value_with_spaces(pointer, buff_end);
-                    } else {
-                        current_attr->value =
-                            parse_value_without_spaces(pointer, buff_end);
-                    }
-                    pointer += strlen(current_attr->value);
+                    current_attr->value = parse_value_with_spaces(
+                        pointer, buff_end, *(pointer - 1));
+                } else {
+                    current_attr->value =
+                        parse_value_without_spaces(pointer, buff_end);
                 }
+                pointer += strlen(current_attr->value);
                 break;
             default:
                 // skipping spaces and unknow symbols

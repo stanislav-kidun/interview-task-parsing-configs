@@ -56,9 +56,12 @@ void close_parentheses() {
 void print_attr_data(struct attr* attr) {
     if (attr) {
         print_with_indent("Attribute name: %s\n", attr->name);
+
         open_parentheses();
         if (attr->value) {
             print_with_indent("Attribute value: %s\n", attr->value);
+        } else {
+            print_with_indent("No value:\n");
         }
         close_parentheses();
     }
@@ -78,9 +81,12 @@ void print_node_data(struct node* node) {
         print_with_indent("Node name: %s\n", node->name);
         open_parentheses();
         if (node->attr) {
+            print_with_indent("Atributes:\n");
             print_attr(node->attr);
         }
+        print_with_indent("\n");
         if (node->child) {
+            print_with_indent("Children:\n");
             print_node(node->child);
         }
         close_parentheses();
@@ -145,5 +151,6 @@ struct node* read_config_from_file(char* file_name) {
     }
 
     fclose(read_fd);
-    return parse_config_from_buffer((char*)mapped_file, read_file_status.st_size);
+    return parse_config_from_buffer((char*)mapped_file,
+                                    read_file_status.st_size);
 }

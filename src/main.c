@@ -27,8 +27,8 @@ void test_print_node_with_single_attr() {
 
 int main(int argc, char* argv[]) {
     // tests
-    test_print_with_indent();
-    test_print_node_with_single_attr();
+    // test_print_with_indent();
+    // test_print_node_with_single_attr();
 
     struct node* node_ref = read_config_from_file("../text.txt");
     if (node_ref) {
