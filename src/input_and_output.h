@@ -22,4 +22,5 @@ void print_config(struct node* starting_node);
 
 //////// INPUT ////////
 
-struct node* read_config_from_file(int argc, char* argv[]);
+struct node* read_config(int argc, char* argv[]);
+struct node* read_config_from_file(char* file_name);

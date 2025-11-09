@@ -104,37 +104,46 @@ void print_config(struct node* starting_node) {
 
 //////// INPUT ////////
 
-struct node* read_config_from_file(int argc, char* argv[]) {
+// If you need to create more ways to input configs, for example from argv, I
+// suggest creating more functions here, preprocess all data into char[] buffer
+// and pass it to parsers.
+
+struct node* read_config(int argc, char* argv[]) {
     if (argc == 1) {
         errno = EINVAL;
         fprintf(stderr, "No arguments provided\n");
         return NULL;
     }
 
-    FILE* read_fd = fopen(argv[1], "r");
+    return read_config_from_file(argv[1]);
+}
+
+struct node* read_config_from_file(char* file_name) {
+    FILE* read_fd = fopen(file_name, "r");
     if (!read_fd) {
-        fprintf(stderr, "Failed to open file: \"%s\"\n", argv[1]);
+        fprintf(stderr, "Failed to open file: \"%s\"\n", file_name);
         return NULL;
     }
 
     struct stat read_file_status;
     if (fstat(fileno(read_fd), &read_file_status)) {
-        fprintf(stderr, "Failed to access file info: \"%s\"\n", argv[1]);
+        fprintf(stderr, "Failed to access file info: \"%s\"\n", file_name);
         return NULL;
     }
 
     if (read_file_status.st_size == 0) {
         errno = EINVAL;
-        fprintf(stderr, "File is empty: \"%s\"\n", argv[1]);
+        fprintf(stderr, "File is empty: \"%s\"\n", file_name);
         return NULL;
     }
 
     void* mapped_file = mmap(NULL, read_file_status.st_size, PROT_READ,
                              MAP_PRIVATE, fileno(read_fd), 0);
     if (mapped_file == MAP_FAILED) {
-        fprintf(stderr, "Failed to map file: \"%s\"\n", argv[1]);
+        fprintf(stderr, "Failed to map file: \"%s\"\n", file_name);
         return NULL;
     }
 
-    return parse_config_from_buffer((char*)mapped_file);
+    fclose(read_fd);
+    return parse_config_from_buffer((char*)mapped_file, read_file_status.st_size);
 }
