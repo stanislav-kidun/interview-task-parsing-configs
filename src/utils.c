@@ -44,3 +44,9 @@ void* get_top_from_stack(struct SimpleStack* stack) {
         }
     }
 }
+
+void clear_stack(struct SimpleStack* stack) {
+    while(stack->top_node) {
+        extract_top_from_stack(stack);
+    }
+}

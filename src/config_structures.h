@@ -14,4 +14,7 @@ struct node {
     struct node* child;
 };
 
-void free_config();
+void free_node(struct node* node);
+void free_attr(struct attr* attr);
+
+#define free_config(config) free_node(config);
