@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     test_print_with_indent();
     test_print_node_with_single_attr();
 
-    struct node* node_ref = read_config_from_file(argc, argv);
+    struct node* node_ref = read_config_from_file("../text.txt");
     if (node_ref) {
         print_config(node_ref);
     }
