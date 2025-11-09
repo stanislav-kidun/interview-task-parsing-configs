@@ -13,3 +13,5 @@ struct node {
     struct node* next;
     struct node* child;
 };
+
+void free_config();
