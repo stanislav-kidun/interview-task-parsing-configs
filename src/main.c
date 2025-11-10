@@ -31,7 +31,6 @@ int main(int argc, char* argv[]) {
     // test_print_node_with_single_attr();
 
     struct node* config = read_config(argc, argv);
-    // struct node* config = read_config_from_file("../text.txt");
     if (config) {
         print_config(config);
     }

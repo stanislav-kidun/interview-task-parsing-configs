@@ -63,18 +63,14 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
     }
     char* buff_end = buff + buff_length;
 
-    // start_node is reterning node. It indicates start of the chain
-    // TODO: process situations when no nodes passed in config, so no memory
-    // must be initialised, errno setted and error writed to stderr
     struct node* start_node = NULL;
-
     struct node* current_node = NULL;
     struct node* previous_node = NULL;
 
     struct attr* current_attr = NULL;
     struct attr* previous_attr = NULL;
 
-    // stack for storing opened nodes, to manage children
+    // stacks for storing opened nodes, to manage children and parents
     struct SimpleStack opened_nodes_stack;
     opened_nodes_stack.top_node = NULL;
     struct SimpleStack opened_nodes_last_attr_stack;
@@ -112,9 +108,6 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
                 pointer += strlen(current_node->name);
                 break;
             case ']':
-                // TODO: need to make parent node current. The easy way is to
-                // add parent field in node structure. The hard one is to
-                // create stack with nodes
                 previous_node =
                     (struct node*)extract_top_from_stack(&opened_nodes_stack);
                 previous_attr = (struct attr*)extract_top_from_stack(
