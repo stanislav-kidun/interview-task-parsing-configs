@@ -136,21 +136,25 @@ struct node* read_config_from_file(char* file_name) {
         fprintf(stderr, "Failed to access file info: \"%s\"\n", file_name);
         return NULL;
     }
+    size_t file_size = read_file_status.st_size;
 
-    if (read_file_status.st_size == 0) {
+    if (file_size == 0) {
         errno = EINVAL;
         fprintf(stderr, "File is empty: \"%s\"\n", file_name);
         return NULL;
     }
 
-    void* mapped_file = mmap(NULL, read_file_status.st_size, PROT_READ,
-                             MAP_PRIVATE, fileno(read_fd), 0);
+    void* mapped_file =
+        mmap(NULL, file_size, PROT_READ, MAP_PRIVATE, fileno(read_fd), 0);
     if (mapped_file == MAP_FAILED) {
         fprintf(stderr, "Failed to map file: \"%s\"\n", file_name);
         return NULL;
     }
 
+    struct node* parsed_config =
+        parse_config_from_buffer((char*)mapped_file, file_size);
+
     fclose(read_fd);
-    return parse_config_from_buffer((char*)mapped_file,
-                                    read_file_status.st_size);
+    munmap(mapped_file, file_size);
+    return parsed_config;
 }
