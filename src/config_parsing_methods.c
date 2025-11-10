@@ -64,10 +64,7 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
     char* buff_end = buff + buff_length;
 
     struct node* start_node = NULL;
-    struct node* current_node = NULL;
     struct node* previous_node = NULL;
-
-    struct attr* current_attr = NULL;
     struct attr* previous_attr = NULL;
 
     // stacks for storing opened nodes, to manage children and parents
@@ -80,7 +77,8 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
     while (pointer != buff_end) {
         switch (*pointer) {
             case '[':
-                current_node = (struct node*)calloc(1, sizeof(struct node));
+                struct node* current_node =
+                    (struct node*)calloc(1, sizeof(struct node));
                 if (start_node == NULL) {
                     start_node = current_node;
                     previous_node = current_node;
@@ -99,7 +97,6 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
                     }
                 }
                 add_to_stack(&opened_nodes_stack, current_node);
-
                 add_to_stack(&opened_nodes_last_attr_stack, previous_attr);
                 previous_attr = NULL;
 
@@ -107,6 +104,7 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
                 current_node->name = parse_name(pointer, buff_end);
                 pointer += strlen(current_node->name);
                 break;
+
             case ']':
                 previous_node =
                     (struct node*)extract_top_from_stack(&opened_nodes_stack);
@@ -114,11 +112,13 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
                     &opened_nodes_last_attr_stack);
                 ++pointer;
                 break;
+
             case 'a':
                 // we have found attribute and start parsing it
                 struct node* last_opened_node =
                     (struct node*)get_top_from_stack(&opened_nodes_stack);
-                current_attr = (struct attr*)calloc(1, sizeof(struct attr));
+                struct attr* current_attr =
+                    (struct attr*)calloc(1, sizeof(struct attr));
 
                 if (previous_attr) {
                     previous_attr->next = current_attr;
@@ -131,19 +131,23 @@ struct node* parse_config_from_buffer(char* buff, size_t buff_length) {
                 pointer += strlen(current_attr->name);
 
                 break;
+
             case '=':
-                ++pointer;
-                for (; *pointer == ' '; ++pointer);
-                if ((*pointer == '\'') || (*pointer == '\"')) {
+                if (previous_attr) {
                     ++pointer;
-                    current_attr->value = parse_value_with_spaces(
-                        pointer, buff_end, *(pointer - 1));
-                } else {
-                    current_attr->value =
-                        parse_value_without_spaces(pointer, buff_end);
+                    for (; *pointer == ' '; ++pointer);
+                    if ((*pointer == '\'') || (*pointer == '\"')) {
+                        ++pointer;
+                        previous_attr->value = parse_value_with_spaces(
+                            pointer, buff_end, *(pointer - 1));
+                    } else {
+                        previous_attr->value =
+                            parse_value_without_spaces(pointer, buff_end);
+                    }
+                    pointer += strlen(previous_attr->value);
                 }
-                pointer += strlen(current_attr->value);
                 break;
+
             default:
                 // skipping spaces and unknow symbols
                 ++pointer;
