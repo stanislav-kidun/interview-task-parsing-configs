@@ -61,7 +61,7 @@ void print_attr_data(struct attr* attr) {
         if (attr->value) {
             print_with_indent("Attribute value: %s\n", attr->value);
         } else {
-            print_with_indent("No value:\n");
+            print_with_indent("No value.\n");
         }
         close_parentheses();
     }
